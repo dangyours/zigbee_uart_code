@@ -1,0 +1,24 @@
+--cpu Cortex-M3
+"zigbee_uart_code\startup_stm32f103x6.o"
+"zigbee_uart_code\main.o"
+"zigbee_uart_code\gpio.o"
+"zigbee_uart_code\usart.o"
+"zigbee_uart_code\stm32f1xx_it.o"
+"zigbee_uart_code\stm32f1xx_hal_msp.o"
+"zigbee_uart_code\stm32f1xx_hal_gpio_ex.o"
+"zigbee_uart_code\stm32f1xx_hal_uart.o"
+"zigbee_uart_code\stm32f1xx_hal.o"
+"zigbee_uart_code\stm32f1xx_hal_rcc.o"
+"zigbee_uart_code\stm32f1xx_hal_rcc_ex.o"
+"zigbee_uart_code\stm32f1xx_hal_gpio.o"
+"zigbee_uart_code\stm32f1xx_hal_dma.o"
+"zigbee_uart_code\stm32f1xx_hal_cortex.o"
+"zigbee_uart_code\stm32f1xx_hal_pwr.o"
+"zigbee_uart_code\stm32f1xx_hal_flash.o"
+"zigbee_uart_code\stm32f1xx_hal_flash_ex.o"
+"zigbee_uart_code\stm32f1xx_hal_exti.o"
+"zigbee_uart_code\system_stm32f1xx.o"
+--strict --scatter "zigbee_uart_code\zigbee_uart_code.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "zigbee_uart_code.map" -o zigbee_uart_code\zigbee_uart_code.axf
