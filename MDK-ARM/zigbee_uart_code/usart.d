@@ -27,3 +27,4 @@ zigbee_uart_code\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flas
 zigbee_uart_code\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 zigbee_uart_code\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 zigbee_uart_code\usart.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+zigbee_uart_code\usart.o: D:\Software\keil\Core\ARM\ARMCC\include\stdio.h

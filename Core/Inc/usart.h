@@ -29,7 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;
@@ -37,7 +37,9 @@ extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN Private defines */
-
+extern uint8_t u_buf[];
+#define U2_printf(...) HAL_UART_Transmit(&huart2,(uint8_t *)u_buf,sprintf((char*)u_buf,__VA_ARGS__),HAL_MAX_DELAY) 
+#define U1_printf(...) HAL_UART_Transmit(&huart1,(uint8_t *)u_buf,sprintf((char*)u_buf,__VA_ARGS__),HAL_MAX_DELAY)
 /* USER CODE END Private defines */
 
 void MX_USART1_UART_Init(void);

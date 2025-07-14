@@ -1,5 +1,6 @@
 --cpu Cortex-M3
 "zigbee_uart_code\startup_stm32f103x6.o"
+"zigbee_uart_code\zigbee_uart_handle.o"
 "zigbee_uart_code\main.o"
 "zigbee_uart_code\gpio.o"
 "zigbee_uart_code\usart.o"
