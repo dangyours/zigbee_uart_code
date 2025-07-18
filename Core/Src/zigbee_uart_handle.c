@@ -134,8 +134,12 @@ void zigbee_get_id_manager(void)
         }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, (char *)(zigbee_info.zigbee_addr + 6), 6) == 0) {
+                // 0x4653:03
                 U2_printf("Get ID OK: %s\r\n", rx_buffer);
-                zigbee_init_info_state = ZB_INIT_INFO_GET_ID_DONE;
+                memcpy(zigbee_info.zigbee_id, rx_buffer + 7, 2);
+                zigbee_info.zigbee_id[2] = '\0';
+                U2_printf("ID: %s\r\n", zigbee_info.zigbee_id);
+                zigbee_init_info_state = ZB_INIT_INFO_GET_ID_DONE; 
             } else {
                 U2_printf("Get ID fail: %s\r\n", rx_buffer);
             }
