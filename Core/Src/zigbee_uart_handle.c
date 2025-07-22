@@ -10,7 +10,7 @@ volatile uint8_t data_ready = 0;
 
 volatile uint32_t state_enter_tick = 0;
 #define ZIGBEE_RESPONSE_TIMEOUT 5000 // 5 seconds
-#define ZIGBEE_INTERVAL_RESPONSE 30  // 60 ms
+#define ZIGBEE_INTERVAL_RESPONSE 10  // 60 ms
 /* --------------------------- State Machine Definitions -------------------------- */
 
 // Define the states for our Zigbee startup flow
@@ -32,7 +32,9 @@ typedef enum {
     ZB_STARTUP_SET_DSTEP,
     ZB_STARTUP_WAIT_DSTEP_OK,
     ZB_STARTUP_SET_CHANNEL,
-    ZB_STARTUP_WAIT_CHANNEL_OK
+    ZB_STARTUP_WAIT_CHANNEL_OK,
+    ZB_STARTUP_DEV_CHECK,
+    ZB_STARTUP_WAIT_DEV_OK
 } ZigbeeStartupState_t;
 
 typedef enum {
@@ -89,7 +91,10 @@ void zigbee_init(void)
     zigbee_init_info_state = ZB_INIT_INFO_GET_ID;
     HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 
+    // wait 2s for zigbee reset
+    HAL_Delay(2000);
     zigbee_uart_data_send("+AT");
+    start_timer(); // MODIFIED: Start timer for the initial command
     U2_printf("Starting...\r\n");
 }
 
@@ -175,27 +180,61 @@ void zigbee_network_init_manager(void)
     switch (zigbee_startup_state) {
 
     case ZB_STARTUP_BEGIN:
+        // MODIFIED: Check for a timeout while waiting for the initial "AT_MODE" response.
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for AT_MODE, retrying...\r\n");
+            zigbee_uart_data_send("+AT");
+            start_timer();
+        }
         if (data_ready) {
             U2_printf("Starting Zigbee network check...\r\n");
             U2_printf("rx_buffer: %s\r\n", rx_buffer);
             if (strncmp((char *)rx_buffer, "AT_MODE", 7) == 0) {
-                zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
+                zigbee_startup_state = ZB_STARTUP_DEV_CHECK;
             } else {
                 zigbee_uart_data_send("+AT");
+                start_timer(); // MODIFIED: Restart timer on retry
             }
-            // Clear buffer and re-arm interrupt for the next message
             clear_buffer_reable_interrupt();
         }
         break;
 
+    case ZB_STARTUP_DEV_CHECK:
+        zigbee_uart_data_send("AT+DEV?"); // Send the device status query
+        start_timer();                   // MODIFIED: Start timer
+        zigbee_startup_state = ZB_STARTUP_WAIT_DEV_OK;
+        break;
+    case ZB_STARTUP_WAIT_DEV_OK:
+        // MODIFIED: Add timeout check for AT+DEV? response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for DEV status, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_DEV_CHECK;
+        }
+        if (data_ready) {
+            if (strncmp((char *)rx_buffer, "DEV=", 4) == 0) {
+                U2_printf("Device type detect OK: %s\r\n", rx_buffer);
+                zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
+            } else {
+                U2_printf("Device type detect not OK, retrying...\r\n");
+                zigbee_startup_state = ZB_STARTUP_DEV_CHECK;
+            }
+            clear_buffer_reable_interrupt();
+        }
+        break;
+    
     case ZB_STARTUP_SEND_NWK_CHECK:
         zigbee_uart_data_send("AT+NWK?"); // Send the network status query
+        start_timer();                   // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_NWK_STATUS;
         break;
 
     case ZB_STARTUP_WAIT_NWK_STATUS:
+        // MODIFIED: Add timeout check for AT+NWK? response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for NWK status, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
+        }
         if (data_ready) {
-            // Check the response from AT+NWK?
             if (strncmp((char *)rx_buffer, "NWK=1", 5) == 0) {
                 U2_printf("Network status OK. Startup complete.\r\n");
                 zigbee_startup_state = ZB_STARTUP_GET_ADDR;
@@ -209,17 +248,22 @@ void zigbee_network_init_manager(void)
                 U2_printf("Error: Unexpected response to AT+NWK?: %s\r\n", rx_buffer);
                 zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
             }
-
             clear_buffer_reable_interrupt();
         }
         break;
 
     case ZB_STARTUP_SEND_JOIN:
         zigbee_uart_data_send("AT+JOIN"); // Send the join command
+        start_timer();                    // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_JOIN_OK;
         break;
 
     case ZB_STARTUP_WAIT_JOIN_OK:
+        // MODIFIED: Add timeout check for AT+JOIN response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for JOIN OK, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_SEND_JOIN;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "OK", 2) == 0) {
                 U2_printf("Join command accepted. Waiting for network connection...\r\n");
@@ -228,8 +272,6 @@ void zigbee_network_init_manager(void)
                 U2_printf("Error: AT+JOIN command failed.\r\n");
                 zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
             }
-
-            // Clear buffer and re-arm interrupt for the next message
             clear_buffer_reable_interrupt();
         }
         break;
@@ -240,10 +282,16 @@ void zigbee_network_init_manager(void)
 
     case ZB_STARTUP_EXIT_AT:
         zigbee_uart_data_send("AT+EXIT");
+        start_timer(); // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_EXIT_OK;
         break;
 
     case ZB_STARTUP_WAIT_EXIT_OK:
+        // MODIFIED: Add timeout check for AT+EXIT response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for EXIT OK, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_EXIT_AT;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "OK", 2) == 0) {
                 U2_printf("AT+EXIT finish.\r\n");
@@ -252,20 +300,23 @@ void zigbee_network_init_manager(void)
                 U2_printf("Error: AT+EXIT command failed.\r\n");
                 zigbee_startup_state = ZB_STARTUP_EXIT_AT;
             }
-
-            // Clear buffer and re-arm interrupt for the next message
             clear_buffer_reable_interrupt();
         }
         break;
     case ZB_STARTUP_GET_ADDR:
         zigbee_uart_data_send("AT+ADDR?");
+        start_timer(); // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_ADDR_OK;
         break;
 
     case ZB_STARTUP_WAIT_ADDR_OK:
+        // MODIFIED: Add timeout check for AT+ADDR? response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout waiting for ADDR, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_GET_ADDR;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "ADDR=", 5) == 0) {
-                // strcpy((char *)zigbee_info.zigbee_addr, (char *)(rx_buffer + 5));
                 sprintf((char *)zigbee_info.zigbee_addr, "GETID:%s\r\n", (char *)(rx_buffer + 5));
                 U2_printf("%s\r\n", rx_buffer);
                 zigbee_startup_state = ZB_STARTUP_SET_DSTADDR;
@@ -277,12 +328,19 @@ void zigbee_network_init_manager(void)
             clear_buffer_reable_interrupt();
         }
         break;
+
     case ZB_STARTUP_SET_DSTADDR:
         zigbee_uart_data_send("AT+DSTADDR=0x0000");
+        start_timer(); // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_DSTADDR_OK;
         break;
 
     case ZB_STARTUP_WAIT_DSTADDR_OK:
+        // MODIFIED: Add timeout check for AT+DSTADDR response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout setting DSTADDR, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_SET_DSTADDR;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "DSTADDR=0x0000", 14) == 0) {
                 U2_printf("AT+DSTADDR command accepted.\r\n");
@@ -297,10 +355,16 @@ void zigbee_network_init_manager(void)
 
     case ZB_STARTUP_SET_DSTEP:
         zigbee_uart_data_send("AT+DSTEP=0x01");
+        start_timer(); // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_DSTEP_OK;
         break;
 
     case ZB_STARTUP_WAIT_DSTEP_OK:
+        // MODIFIED: Add timeout check for AT+DSTEP response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout setting DSTEP, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_SET_DSTEP;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "DSTEP=0x01", 10) == 0) {
                 U2_printf("AT+DSTEP command accepted.\r\n");
@@ -315,9 +379,15 @@ void zigbee_network_init_manager(void)
 
     case ZB_STARTUP_SET_CHANNEL:
         zigbee_uart_data_send("AT+CH=11");
+        start_timer(); // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_CHANNEL_OK;
         break;
     case ZB_STARTUP_WAIT_CHANNEL_OK:
+        // MODIFIED: Add timeout check for AT+CH response
+        if (check_timer_timeout(state_enter_tick, ZIGBEE_RESPONSE_TIMEOUT)) {
+            U2_printf("Timeout setting CH, retrying...\r\n");
+            zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
+        }
         if (data_ready) {
             if (strncmp((char *)rx_buffer, "CH=11", 5) == 0) {
                 U2_printf("AT+CH command accepted.\r\n");

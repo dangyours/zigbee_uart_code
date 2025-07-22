@@ -92,7 +92,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   zigbee_init();
-  HAL_Delay(2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */

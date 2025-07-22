@@ -3,7 +3,7 @@
 <title>Static Call Graph - [zigbee_uart_code\zigbee_uart_code.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image zigbee_uart_code\zigbee_uart_code.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Mon Jul 21 17:21:11 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Tue Jul 22 11:21:39 2025
 <BR><P>
 <H3>Maximum Stack Usage =        168 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -560,7 +560,7 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
 </UL>
-<BR>[Called By]<UL><LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<BR>[Called By]<UL><LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_init
 </UL>
 
 <P><STRONG><a name="[70]"></a>HAL_GPIO_Init</STRONG> (Thumb, 418 bytes, Stack size 40 bytes, stm32f1xx_hal_gpio.o(i.HAL_GPIO_Init))
@@ -579,8 +579,8 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[76]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_WaitOnFlagUntilTimeout
 <LI><a href="#[64]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RCC_OscConfig
 <LI><a href="#[62]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RCC_ClockConfig
-<LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[75]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit
+<LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;start_timer
 <LI><a href="#[81]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;check_timer_timeout
 </UL>
@@ -848,7 +848,7 @@ Global Symbols
 <LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_get_id_manager
 </UL>
 
-<P><STRONG><a name="[46]"></a>main</STRONG> (Thumb, 38 bytes, Stack size 0 bytes, main.o(i.main))
+<P><STRONG><a name="[46]"></a>main</STRONG> (Thumb, 30 bytes, Stack size 0 bytes, main.o(i.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 168 + Unknown Stack Size
 <LI>Call Chain = main &rArr; zigbee_run &rArr; zigbee_network_init_manager &rArr; zigbee_uart_data_send &rArr; __2sprintf &rArr; _printf_char_common &rArr; __printf
 </UL>
@@ -856,7 +856,6 @@ Global Symbols
 <LI><a href="#[79]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_USART1_UART_Init
 <LI><a href="#[77]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_GPIO_Init
 <LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Init
-<LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[7d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SystemClock_Config
 <LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_run
 <LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_init
@@ -870,6 +869,8 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
 </UL>
 <BR>[Called By]<UL><LI><a href="#[8c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_transmit_data_handle
+<LI><a href="#[8b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_network_init_manager
+<LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_init
 <LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_get_id_manager
 </UL>
 
@@ -889,26 +890,30 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_run
 </UL>
 
-<P><STRONG><a name="[84]"></a>zigbee_init</STRONG> (Thumb, 86 bytes, Stack size 8 bytes, zigbee_uart_handle.o(i.zigbee_init))
+<P><STRONG><a name="[84]"></a>zigbee_init</STRONG> (Thumb, 98 bytes, Stack size 8 bytes, zigbee_uart_handle.o(i.zigbee_init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 136 + Unknown Stack Size
 <LI>Call Chain = zigbee_init &rArr; zigbee_uart_data_send &rArr; __2sprintf &rArr; _printf_char_common &rArr; __printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[75]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit
 <LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Receive_IT
 <LI><a href="#[78]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
+<LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[89]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_uart_data_send
+<LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;start_timer
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2sprintf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[8b]"></a>zigbee_network_init_manager</STRONG> (Thumb, 736 bytes, Stack size 40 bytes, zigbee_uart_handle.o(i.zigbee_network_init_manager))
+<P><STRONG><a name="[8b]"></a>zigbee_network_init_manager</STRONG> (Thumb, 2130 bytes, Stack size 40 bytes, zigbee_uart_handle.o(i.zigbee_network_init_manager))
 <BR><BR>[Stack]<UL><LI>Max Depth = 168 + Unknown Stack Size
 <LI>Call Chain = zigbee_network_init_manager &rArr; zigbee_uart_data_send &rArr; __2sprintf &rArr; _printf_char_common &rArr; __printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[75]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit
 <LI><a href="#[89]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_uart_data_send
+<LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;start_timer
 <LI><a href="#[82]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clear_buffer_reable_interrupt
+<LI><a href="#[81]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;check_timer_timeout
 <LI><a href="#[88]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strncmp
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2sprintf
 </UL>
@@ -964,6 +969,7 @@ Local Symbols
 <BR>[Calls]<UL><LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
 </UL>
 <BR>[Called By]<UL><LI><a href="#[8c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_transmit_data_handle
+<LI><a href="#[8b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_network_init_manager
 <LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_get_id_manager
 </UL>
 
