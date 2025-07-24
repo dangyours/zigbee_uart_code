@@ -1,16 +1,20 @@
 #include "zigbee_uart_handle.h"
 #include <stdbool.h>
 #include <string.h> // Required for string comparison functions like strncmp
+#include <stdlib.h> // Required for atoi
+#include <ctype.h>  // Required for isxdigit, tolower
 
-#define RX_BUFFER_SIZE 128
+#define RX_BUFFER_SIZE 512
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_data;
 volatile uint16_t rx_index = 0;
 volatile uint8_t data_ready = 0;
+volatile uint8_t rejoin_detect = 0;
 
 volatile uint32_t state_enter_tick = 0;
 #define ZIGBEE_RESPONSE_TIMEOUT 5000 // 5 seconds
 #define ZIGBEE_INTERVAL_RESPONSE 10  // 60 ms
+#define ZIGBEE_MAX_NETWORK_RETRY 12
 /* --------------------------- State Machine Definitions -------------------------- */
 
 // Define the states for our Zigbee startup flow
@@ -58,7 +62,84 @@ void zigbee_network_init_manager(void);
 void zigbee_get_id_manager(void);
 /* -------------------------- Private function prototypes ------------------------- */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+/**
+ * @brief Converts a single hexadecimal character to its integer value.
+ * @param c The character ('0'-'9', 'a'-'f', 'A'-'F').
+ * @return The integer value (0-15), or -1 on error.
+ */
+static int hex_char_to_int(char c)
+{
+    c = tolower(c);
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    return -1;
+}
 
+/**
+ * @brief Decodes a hex string into a binary bitmap.
+ * @param hex_str The null-terminated hex string (e.g., "a813").
+ * @param bitmap  The output byte array to store the binary bitmap.
+ * @param max_bitmap_size The size of the output bitmap buffer.
+ * @return The number of bytes written to the bitmap.
+ */
+static int decode_hex_to_bitmap(const char* hex_str, uint8_t* bitmap, int max_bitmap_size)
+{
+    int hex_len = strlen(hex_str);
+    int byte_count = 0;
+    memset(bitmap, 0, max_bitmap_size); // Clear the bitmap first
+
+    // Process two hex characters at a time to form one byte
+    for (int i = 0; i < hex_len && (i + 1) < hex_len; i += 2) {
+        if (byte_count >= max_bitmap_size) break; // Prevent buffer overflow
+
+        int high_nibble = hex_char_to_int(hex_str[i]);
+        int low_nibble = hex_char_to_int(hex_str[i + 1]);
+
+        if (high_nibble != -1 && low_nibble != -1) {
+            bitmap[byte_count++] = (high_nibble << 4) | low_nibble;
+        }
+    }
+    return byte_count;
+}
+
+/**
+ * @brief Checks if a device should respond and calculates its time slot.
+ *
+ * @param bitmap The decoded bitmap from the master.
+ * @param max_bit The highest possible ID number represented in the bitmap.
+ * @param self_id The ID of this device.
+ * @return The time slot (0 for first, 1 for second, etc.), or -1 if the device should not respond.
+ */
+static int get_response_slot(const uint8_t* bitmap, int max_bit, int self_id)
+{
+    if (self_id <= 0 || self_id > max_bit) {
+        return -1;
+    }
+
+    // 1. First, check if our own ID is present in the bitmap.
+    int self_byte_index = (self_id - 1) / 8;
+    int self_bit_index = (self_id - 1) % 8;
+    if (!((bitmap[self_byte_index] >> self_bit_index) & 1)) {
+        return -1; // Our bit is not set, we should not respond.
+    }
+
+    // 2. Our bit is set. Now, count how many devices with a LOWER ID are also set.
+    // This count determines our unique time slot for responding.
+    int preceding_slaves = 0;
+    for (int i = 1; i < self_id; i++) {
+        int byte_index = (i - 1) / 8;
+        int bit_index = (i - 1) % 8;
+        if ((bitmap[byte_index] >> bit_index) & 1) {
+            preceding_slaves++;
+        }
+    }
+
+    return preceding_slaves;
+}
 void start_timer(void)
 {
     state_enter_tick = HAL_GetTick();
@@ -102,22 +183,42 @@ void zigbee_transmit_data_handle()
 {
     if (data_ready) {
         U2_printf("rx_buffer: %s\r\n", rx_buffer);
-        if (strncmp((char *)rx_buffer, "MDATA:", 6) == 0) {
-            int len = 0;
-            char *postition = strstr((char *)rx_buffer, (char *)zigbee_info.zigbee_id);
-            if (postition != NULL) {
-                len = postition - (char *)rx_buffer - 6;
-                U2_printf("len: %d\r\n", len);
-                start_timer();
-                while (!check_timer_timeout(state_enter_tick, ZIGBEE_INTERVAL_RESPONSE * len)) {
-                    ;
+
+        // Check for the new hex bitmap prefix "MBMP:"
+        if (strncmp((char *)rx_buffer, "MBMP:", 5) == 0) {
+            const char *hex_payload = (const char *)rx_buffer + 5;
+            
+            // Create a buffer to hold the decoded binary bitmap.
+            // Size 64 supports up to 512 slave IDs, adjust if needed.
+            uint8_t decoded_bitmap[64]; 
+            int bitmap_byte_count = decode_hex_to_bitmap(hex_payload, decoded_bitmap, sizeof(decoded_bitmap));
+
+            if (bitmap_byte_count > 0) {
+                // Convert our own ID from string to integer
+                int self_id = atoi((char*)zigbee_info.zigbee_id);
+
+                // Get our time slot (e.g., 0, 1, 2...)
+                int slot = get_response_slot(decoded_bitmap, bitmap_byte_count * 8, self_id);
+
+                // If slot is not -1, it means we must respond
+                if (slot != -1) {
+                    U2_printf("ID %d is present. Responding in slot %d.\r\n", self_id, slot);
+                    
+                    // Wait for our designated time slot to avoid collisions
+                    start_timer();
+                    while (!check_timer_timeout(state_enter_tick, ZIGBEE_INTERVAL_RESPONSE * slot)) {
+                        ; // Busy wait for the correct delay
+                    }
+
+                    // Send our ID back to the master
+                    zigbee_uart_data_send((char *)zigbee_info.zigbee_id_uart_data);
                 }
-                zigbee_uart_data_send((char *)zigbee_info.zigbee_id_uart_data);
             }
         }
         clear_buffer_reable_interrupt();
     }
 }
+
 
 void zigbee_run(void)
 {
@@ -243,8 +344,18 @@ void zigbee_network_init_manager(void)
                 zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
             } else if (strncmp((char *)rx_buffer, "NWK=2", 5) == 0) {
                 U2_printf("Network offline, redetect\r\n");
-                zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
+                HAL_Delay(5000);
+                rejoin_detect++;
+							  zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
+                if (rejoin_detect > ZIGBEE_MAX_NETWORK_RETRY) {
+                   zigbee_uart_data_send("AT+LEAVE");
+                   U2_printf("Leave network for rejoin\r\n");
+                   zigbee_init();
+                   HAL_Delay(1000);
+                }
+                
             } else {
+							
                 U2_printf("Error: Unexpected response to AT+NWK?: %s\r\n", rx_buffer);
                 zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
             }

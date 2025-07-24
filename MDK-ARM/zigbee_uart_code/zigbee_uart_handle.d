@@ -31,3 +31,5 @@ zigbee_uart_code\zigbee_uart_handle.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32
 zigbee_uart_code\zigbee_uart_handle.o: D:\Software\keil\Core\ARM\ARMCC\include\stdio.h
 zigbee_uart_code\zigbee_uart_handle.o: D:\Software\keil\Core\ARM\ARMCC\include\stdbool.h
 zigbee_uart_code\zigbee_uart_handle.o: D:\Software\keil\Core\ARM\ARMCC\include\string.h
+zigbee_uart_code\zigbee_uart_handle.o: D:\Software\keil\Core\ARM\ARMCC\include\stdlib.h
+zigbee_uart_code\zigbee_uart_handle.o: D:\Software\keil\Core\ARM\ARMCC\include\ctype.h
