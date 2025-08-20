@@ -3,7 +3,7 @@
 <title>Static Call Graph - [zigbee_uart_code\zigbee_uart_code.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image zigbee_uart_code\zigbee_uart_code.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Wed Jul 23 15:42:23 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Wed Aug 20 10:01:08 2025
 <BR><P>
 <H3>Maximum Stack Usage =        232 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -985,17 +985,15 @@ Global Symbols
 <LI><a href="#[52]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2sprintf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
-<LI><a href="#[97]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_network_init_manager
 </UL>
 
-<P><STRONG><a name="[97]"></a>zigbee_network_init_manager</STRONG> (Thumb, 2188 bytes, Stack size 40 bytes, zigbee_uart_handle.o(i.zigbee_network_init_manager))
-<BR><BR>[Stack]<UL><LI>Max Depth = 176 + Unknown Stack Size
-<LI>Call Chain = zigbee_network_init_manager &rArr; zigbee_init &rArr; zigbee_uart_data_send &rArr; __2sprintf &rArr; _printf_char_common &rArr; __printf
+<P><STRONG><a name="[97]"></a>zigbee_network_init_manager</STRONG> (Thumb, 2142 bytes, Stack size 40 bytes, zigbee_uart_handle.o(i.zigbee_network_init_manager))
+<BR><BR>[Stack]<UL><LI>Max Depth = 168 + Unknown Stack Size
+<LI>Call Chain = zigbee_network_init_manager &rArr; zigbee_uart_data_send &rArr; __2sprintf &rArr; _printf_char_common &rArr; __printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit
 <LI><a href="#[64]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_uart_data_send
-<LI><a href="#[90]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;zigbee_init
 <LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;start_timer
 <LI><a href="#[8d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clear_buffer_reable_interrupt
 <LI><a href="#[8c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;check_timer_timeout

@@ -1,8 +1,8 @@
 #include "zigbee_uart_handle.h"
+#include <ctype.h> // Required for isxdigit, tolower
 #include <stdbool.h>
-#include <string.h> // Required for string comparison functions like strncmp
 #include <stdlib.h> // Required for atoi
-#include <ctype.h>  // Required for isxdigit, tolower
+#include <string.h> // Required for string comparison functions like strncmp
 
 #define RX_BUFFER_SIZE 512
 uint8_t rx_buffer[RX_BUFFER_SIZE];
@@ -86,7 +86,7 @@ static int hex_char_to_int(char c)
  * @param max_bitmap_size The size of the output bitmap buffer.
  * @return The number of bytes written to the bitmap.
  */
-static int decode_hex_to_bitmap(const char* hex_str, uint8_t* bitmap, int max_bitmap_size)
+static int decode_hex_to_bitmap(const char *hex_str, uint8_t *bitmap, int max_bitmap_size)
 {
     int hex_len = strlen(hex_str);
     int byte_count = 0;
@@ -94,7 +94,8 @@ static int decode_hex_to_bitmap(const char* hex_str, uint8_t* bitmap, int max_bi
 
     // Process two hex characters at a time to form one byte
     for (int i = 0; i < hex_len && (i + 1) < hex_len; i += 2) {
-        if (byte_count >= max_bitmap_size) break; // Prevent buffer overflow
+        if (byte_count >= max_bitmap_size)
+            break; // Prevent buffer overflow
 
         int high_nibble = hex_char_to_int(hex_str[i]);
         int low_nibble = hex_char_to_int(hex_str[i + 1]);
@@ -114,7 +115,7 @@ static int decode_hex_to_bitmap(const char* hex_str, uint8_t* bitmap, int max_bi
  * @param self_id The ID of this device.
  * @return The time slot (0 for first, 1 for second, etc.), or -1 if the device should not respond.
  */
-static int get_response_slot(const uint8_t* bitmap, int max_bit, int self_id)
+static int get_response_slot(const uint8_t *bitmap, int max_bit, int self_id)
 {
     if (self_id <= 0 || self_id > max_bit) {
         return -1;
@@ -176,7 +177,7 @@ void zigbee_init(void)
     HAL_Delay(2000);
     zigbee_uart_data_send("+AT");
     start_timer(); // MODIFIED: Start timer for the initial command
-    U2_printf("Starting...\r\n");
+    U2_printf("Starting... 0819 version\r\n");
 }
 
 void zigbee_transmit_data_handle()
@@ -187,15 +188,15 @@ void zigbee_transmit_data_handle()
         // Check for the new hex bitmap prefix "MBMP:"
         if (strncmp((char *)rx_buffer, "MBMP:", 5) == 0) {
             const char *hex_payload = (const char *)rx_buffer + 5;
-            
+
             // Create a buffer to hold the decoded binary bitmap.
             // Size 64 supports up to 512 slave IDs, adjust if needed.
-            uint8_t decoded_bitmap[64]; 
+            uint8_t decoded_bitmap[64];
             int bitmap_byte_count = decode_hex_to_bitmap(hex_payload, decoded_bitmap, sizeof(decoded_bitmap));
 
             if (bitmap_byte_count > 0) {
                 // Convert our own ID from string to integer
-                int self_id = atoi((char*)zigbee_info.zigbee_id);
+                int self_id = atoi((char *)zigbee_info.zigbee_id);
 
                 // Get our time slot (e.g., 0, 1, 2...)
                 int slot = get_response_slot(decoded_bitmap, bitmap_byte_count * 8, self_id);
@@ -203,7 +204,7 @@ void zigbee_transmit_data_handle()
                 // If slot is not -1, it means we must respond
                 if (slot != -1) {
                     U2_printf("ID %d is present. Responding in slot %d.\r\n", self_id, slot);
-                    
+
                     // Wait for our designated time slot to avoid collisions
                     start_timer();
                     while (!check_timer_timeout(state_enter_tick, ZIGBEE_INTERVAL_RESPONSE * slot)) {
@@ -218,7 +219,6 @@ void zigbee_transmit_data_handle()
         clear_buffer_reable_interrupt();
     }
 }
-
 
 void zigbee_run(void)
 {
@@ -302,7 +302,7 @@ void zigbee_network_init_manager(void)
 
     case ZB_STARTUP_DEV_CHECK:
         zigbee_uart_data_send("AT+DEV?"); // Send the device status query
-        start_timer();                   // MODIFIED: Start timer
+        start_timer();                    // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_DEV_OK;
         break;
     case ZB_STARTUP_WAIT_DEV_OK:
@@ -322,10 +322,10 @@ void zigbee_network_init_manager(void)
             clear_buffer_reable_interrupt();
         }
         break;
-    
+
     case ZB_STARTUP_SEND_NWK_CHECK:
         zigbee_uart_data_send("AT+NWK?"); // Send the network status query
-        start_timer();                   // MODIFIED: Start timer
+        start_timer();                    // MODIFIED: Start timer
         zigbee_startup_state = ZB_STARTUP_WAIT_NWK_STATUS;
         break;
 
@@ -342,20 +342,22 @@ void zigbee_network_init_manager(void)
             } else if (strncmp((char *)rx_buffer, "NWK=0", 5) == 0) {
                 U2_printf("Not in a network. Attempting to join...\r\n");
                 zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
+                HAL_Delay(1000);
             } else if (strncmp((char *)rx_buffer, "NWK=2", 5) == 0) {
                 U2_printf("Network offline, redetect\r\n");
                 HAL_Delay(5000);
-                rejoin_detect++;
-							  zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
-                if (rejoin_detect > ZIGBEE_MAX_NETWORK_RETRY) {
-                   zigbee_uart_data_send("AT+LEAVE");
-                   U2_printf("Leave network for rejoin\r\n");
-                   zigbee_init();
-                   HAL_Delay(1000);
-                }
-                
+                // Because the network join is difficult, so don't leave network.
+                // rejoin_detect++;
+                // zigbee_startup_state = ZB_STARTUP_SET_CHANNEL;
+                // if (rejoin_detect > ZIGBEE_MAX_NETWORK_RETRY) {
+                //     zigbee_uart_data_send("AT+LEAVE");
+                //     U2_printf("Leave network for rejoin\r\n");
+                //     zigbee_init();
+                //     HAL_Delay(1000);
+                // }
+
             } else {
-							
+
                 U2_printf("Error: Unexpected response to AT+NWK?: %s\r\n", rx_buffer);
                 zigbee_startup_state = ZB_STARTUP_SEND_NWK_CHECK;
             }
